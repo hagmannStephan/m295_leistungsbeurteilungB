@@ -37,13 +37,68 @@ let tasks = [
     }
 ]
 
+// Create the credentials to access the applicationS
+const credentials = {"password": "m295"}
+
+let token = ""      // Set an empty token (will be added to the cookie)
+const genRanHex = size => [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');     // Used to create a random hexadeximal String for the "token" (source: https://stackoverflow.com/questions/58325771/how-to-generate-random-hex-string-in-javascript)
+
+// Check user credentials and if valid, add email to cookie for identificaiton
+app.post('/login', (request, response) => {
+    const email = request.body.email;
+    const password = request.body.password;
+
+    if (password === credentials.password && email) {   // Check if the credentials are valid
+            token = genRanHex(12);              // Generate random token
+            request.session.token = token;      // Add email to the cookie
+            return response.status(200).json({"success": token});
+    }
+
+    return response.status(401).send();
+})
+
+// Verify if the user is logged in by having a valid token in his cookie
+app.get('/verify', (request, response) => {
+    if (request.session.token === token) {
+        return response.status(200).json({"state": "valid"});
+    }
+    if (!request.session.token) {
+        return response.status(401).json({"status": "no cookie found"});
+    }
+    return response.status(401).json({"state": `not valid: ${request.session.token}`});
+})
+
+// Logout a user if he is currently logged in
+app.delete('/logout', (request, response) => {
+    request.session.token = "the cookie has expired";
+    return response.status(204).send();
+})
+
+function verify (cookie, response) {
+    if (!cookie) {      // Check if there is no cookie
+        return response.status(403).json({"status": "no cookie found"});
+    } else if (cookie === "the cookie has expired") {       // Check if the cookie is expired
+        return response.status(403).json({"state": `not valid: ${cookie}`});
+    }
+}
+
 // Query every task
 app.get('/tasks', (request, response) => {
+    let verification = verify(request.session.token, response);
+    if (verification){         // Call a function to verify the cookie
+        return verification;   // If something got returned, return that
+    }
+
     return response.status(200).json(tasks);
 })
 
 // Create a new task and return that task (if successful)
 app.post('/tasks', (request, response) => {
+    let verification = verify(request.session.token, response);
+    if (verification){
+        return verification; 
+    }
+
     const id = tasks[tasks.length - 1].id + 1;
     const title = request.body.title;
     const description = request.body.description;
@@ -79,6 +134,11 @@ app.post('/tasks', (request, response) => {
 
 // Query for a specific task by id
 app.get('/tasks/:id', (request, response) => {
+    let verification = verify(request.session.token, response);
+    if (verification){
+        return verification; 
+    }
+    
     const id = parseInt(request.params.id); // Get the provided id
     let task = tasks.findIndex((task) => task.id === id);
     task = tasks[task];                      // Get the corresponding object
@@ -91,6 +151,11 @@ app.get('/tasks/:id', (request, response) => {
 })
 
 app.put('/tasks/:id', (request, response) => {
+    let verification = verify(request.session.token, response);
+    if (verification){
+        return verification; 
+    }
+    
     const id = parseInt(request.params.id); // Get the provided id
     let task = tasks.findIndex((task) => task.id === id);
     task = tasks[task];                      // Get the corresponding object
@@ -135,6 +200,11 @@ app.put('/tasks/:id', (request, response) => {
 })
 
 app.delete('/tasks/:id', (request, response) => {
+    let verification = verify(request.session.token, response);
+    if (verification){
+        return verification; 
+    }
+    
     const id = parseInt(request.params.id); // Get the provided id
     let taskIndex = tasks.findIndex((task) => task.id === id);
     let task = tasks[taskIndex];                      // Get the corresponding object
@@ -145,7 +215,7 @@ app.delete('/tasks/:id', (request, response) => {
 
     tasks.splice(taskIndex, 1);             // Remove the entry from the list
 
-    return response.status(200).send();
+    return response.status(200).json(task);
 })
 
 app.listen(port, () => {
