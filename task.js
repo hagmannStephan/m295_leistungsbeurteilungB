@@ -16,7 +16,7 @@ app.use(session({               // Set up a session management
     saveUninitialized: true,
     cookie: {}
 }))
-app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocument));    // Setup the swagger document
+app.use('/documentation', swaggerUi.serve, swaggerUi.setup(swaggerDocument));    // Setup the swagger document
 
 // Port, where the application is running
 const port = 3000;
@@ -49,33 +49,52 @@ const genRanHex = size => [...Array(size)].map(() => Math.floor(Math.random() * 
 
 // Check user credentials and if valid, add email to cookie for identificaiton
 app.post('/login', (request, response) => {
-    const email = request.body.email;
-    const password = request.body.password;
+    console.log(new Date() + ": the route POST: /login got called")
+    try {
+        const email = request.body.email;
+        const password = request.body.password;
 
-    if (password === credentials.password && email) {   // Check if the credentials are valid
-            token = genRanHex(12);              // Generate random token
-            request.session.token = token;      // Add email to the cookie
-            return response.status(200).json({"success": token});
+        if (password === credentials.password && email) {   // Check if the credentials are valid
+                token = genRanHex(12);              // Generate random token
+                request.session.token = token;      // Add email to the cookie
+                return response.status(200).json({"success": token});
+        }
+
+        return response.status(401).send();
+    } catch (error) {
+        console.error(error);
+        return response.status(500).send();    
     }
-
-    return response.status(401).send();
+    
 })
 
 // Verify if the user is logged in by having a valid token in his cookie
 app.get('/verify', (request, response) => {
-    if (request.session.token === token) {
-        return response.status(200).json({"state": "valid"});
+    console.log(new Date() + ": the route GET: /verify got called")
+    try {    
+        if (request.session.token === token) {
+            return response.status(200).json({"state": "valid"});
+        }
+        if (!request.session.token) {
+            return response.status(401).json({"status": "no cookie found"});
+        }
+        return response.status(401).json({"state": `not valid: ${request.session.token}`});
+    } catch (error) {
+        console.error(error);
+        return response.status(500).send();    
     }
-    if (!request.session.token) {
-        return response.status(401).json({"status": "no cookie found"});
-    }
-    return response.status(401).json({"state": `not valid: ${request.session.token}`});
 })
 
 // Logout a user if he is currently logged in
 app.delete('/logout', (request, response) => {
-    request.session.token = "the cookie has expired";
-    return response.status(204).send();
+    console.log(new Date() + ": the route DELETE: /logout got called")
+    try {
+        request.session.token = "the cookie has expired";
+        return response.status(204).send();
+    } catch (error) {
+        console.error(error);
+        return response.status(500).send();    
+    }
 })
 
 function verify (cookie, response) {
@@ -88,139 +107,178 @@ function verify (cookie, response) {
 
 // Query every task
 app.get('/tasks', (request, response) => {
-    let verification = verify(request.session.token, response);
-    if (verification){         // Call a function to verify the cookie
-        return verification;   // If something got returned, return that
-    }
+    console.log(new Date() + ": the route GET: /tasks got called")
+    try {
+        let verification = verify(request.session.token, response);
+        if (verification){         // Call a function to verify the cookie
+            return verification;   // If something got returned, return that
+        }
 
-    return response.status(200).json(tasks);
+        return response.status(200).json(tasks);
+    } catch (error) {
+        console.error(error);
+        return response.status(500).send();    
+    }
 })
 
 // Create a new task and return that task (if successful)
 app.post('/tasks', (request, response) => {
-    let verification = verify(request.session.token, response);
-    if (verification){
-        return verification; 
+    console.log(new Date() + ": the route POST: /tasks got called")
+    try {
+        let verification = verify(request.session.token, response);
+        if (verification){
+            return verification; 
+        }
+
+        const id = tasks[tasks.length - 1].id + 1;
+        const title = request.body.title;
+        let description = request.body.description;
+        let done = request.body.done;
+        let dueDate = request.body.dueDate;
+        const createdDate = new Date;
+
+        if (!done) {        // Set done to false by standard
+            done = false;
+        }
+
+        if (!dueDate) {     // If no dueDate is provided, there will be no due date
+            dueDate = "";
+        }
+
+        if (title === "" || !title) {    // Check if required values are set
+            return response.status(406).json({"406": "Please enter a value for title"})
+        }
+
+        if (!description) {
+            description = "";
+        }
+
+        const task = {          // Create the new task object
+            "id": id,
+            "title": title,
+            "description": description,
+            "done": done,
+            "dueDate": dueDate,
+            "createdDate": createdDate
+        }
+
+        tasks.push(task);       // Add object to tasks
+
+        return response.status(201).json(task);
+    } catch (error) {
+        console.error(error);
+        return response.status(500).send();    
     }
-
-    const id = tasks[tasks.length - 1].id + 1;
-    const title = request.body.title;
-    const description = request.body.description;
-    let done = request.body.done;
-    let dueDate = request.body.dueDate;
-    const createdDate = new Date;
-
-    if (!done) {        // Set done to false by standard
-        done = false;
-    }
-
-    if (!dueDate) {     // If no dueDate is provided, there will be no due date
-        dueDate = "";
-    }
-
-    if (!title || !description) {   // Check if required values are set
-        return response.status(422).send();
-    }
-
-    const task = {          // Create the new task object
-        "id": id,
-        "title": title,
-        "description": description,
-        "done": done,
-        "dueDate": dueDate,
-        "createdDate": createdDate
-    }
-
-    tasks.push(task);       // Add object to tasks
-
-    return response.status(201).json(task);
 })
 
 // Query for a specific task by id
 app.get('/tasks/:id', (request, response) => {
-    let verification = verify(request.session.token, response);
-    if (verification){
-        return verification; 
-    }
-    
-    const id = parseInt(request.params.id); // Get the provided id
-    let task = tasks.findIndex((task) => task.id === id);
-    task = tasks[task];                      // Get the corresponding object
+    console.log(new Date() + ": the route GET: /tasks/:id got called")
+    try {
+        let verification = verify(request.session.token, response);
+        if (verification){
+            return verification; 
+        }
+        
+        const id = parseInt(request.params.id); // Get the provided id
+        let task = tasks.findIndex((task) => task.id === id);
+        task = tasks[task];                      // Get the corresponding object
 
-    if(!task) {                             // Check if a task got found
-        return response.status(404).send();
-    }
+        if(!task) {                             // Check if a task got found
+            return response.status(404).send();
+        }
 
-    return response.status(200).json(task);
+        return response.status(200).json(task);
+    } catch (error) {
+        console.error(error);
+        return response.status(500).send();    
+    }
 })
 
+// Update a task
 app.put('/tasks/:id', (request, response) => {
-    let verification = verify(request.session.token, response);
-    if (verification){
-        return verification; 
+    console.log(new Date() + ": the route PUT: /tasks/:id got called")
+    try {
+        let verification = verify(request.session.token, response);
+        if (verification){
+            return verification; 
+        }
+        
+        const id = parseInt(request.params.id); // Get the provided id
+        let task = tasks.findIndex((task) => task.id === id);
+        task = tasks[task];                      // Get the corresponding object
+
+        if(!task) {                             // Check if a task got found
+            return response.status(404).send();
+        }
+
+        let title = request.body.title;       // Get the provided values
+        let description = request.body.description;
+        let done = request.body.done;
+        let dueDate = request.body.dueDate;
+
+        if (!title || title === "") {
+            return response.status(406).json({"406": "Please enter a value for title"})
+        }
+
+        if (!description) {                       // If not provided, do not update the field
+            description = task.description;
+        }
+
+        if(!done) {
+            done = task.done;
+        }
+
+        if(!dueDate) {
+            dueDate = task.dueDate;
+        }
+
+        let updated_task = {            // Create the updated task-object
+            "id": task.id,
+            "title": title,
+            "description": description,
+            "done": done,
+            "dueDate": dueDate,
+            "createdDate": task.createdDate
+        }
+
+        task = updated_task;        // Modify the existing task to the updated task
+
+        return response.status(200).json(updated_task);
+    } catch (error) {
+        console.error(error);
+        return response.status(500).send();    
     }
-    
-    const id = parseInt(request.params.id); // Get the provided id
-    let task = tasks.findIndex((task) => task.id === id);
-    task = tasks[task];                      // Get the corresponding object
-
-    if(!task) {                             // Check if a task got found
-        return response.status(404).send();
-    }
-
-    let title = request.body.title;       // Get the provided values
-    let description = request.body.description;
-    let done = request.body.done;
-    let dueDate = request.body.dueDate;
-
-    if (!title) {                       // If not provided, do not update the field
-        title = task.title;
-    }
-
-    if (!description) {
-        description = task.description;
-    }
-
-    if(!done) {
-        done = task.done;
-    }
-
-    if(!dueDate) {
-        dueDate = task.dueDate;
-    }
-
-    let updated_task = {            // Create the updated task-object
-        "id": task.id,
-        "title": title,
-        "description": description,
-        "done": done,
-        "dueDate": dueDate,
-        "createdDate": task.createdDate
-    }
-
-    task = updated_task;        // Modify the existing task to the updated task
-
-    return response.status(200).json(updated_task);
 })
 
 app.delete('/tasks/:id', (request, response) => {
-    let verification = verify(request.session.token, response);
-    if (verification){
-        return verification; 
+    console.log(new Date() + ": the route DELETE: /tasks/:id got called")
+    try {
+        let verification = verify(request.session.token, response);
+        if (verification){
+            return verification; 
+        }
+        
+        const id = parseInt(request.params.id); // Get the provided id
+        let taskIndex = tasks.findIndex((task) => task.id === id);
+        let task = tasks[taskIndex];                      // Get the corresponding object
+
+        if(!task) {                             // Check if a task got found
+            return response.status(404).send();
+        }
+
+        tasks.splice(taskIndex, 1);             // Remove the entry from the list
+
+        return response.status(200).json(task);
+    } catch (error) {
+        console.error(error);
+        return response.status(500).send();    
     }
-    
-    const id = parseInt(request.params.id); // Get the provided id
-    let taskIndex = tasks.findIndex((task) => task.id === id);
-    let task = tasks[taskIndex];                      // Get the corresponding object
-
-    if(!task) {                             // Check if a task got found
-        return response.status(404).send();
-    }
-
-    tasks.splice(taskIndex, 1);             // Remove the entry from the list
-
-    return response.status(200).json(task);
 })
+
+app.use((req, res, next) => {       // Send user code 404 if page isn't found
+    res.status(404).json({"404": "route not found"});
+});
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
