@@ -6,6 +6,9 @@ const app = express();
 const session = require('express-session');     // Declare session
 const { request } = require('http');
 
+const swaggerUi = require('swagger-ui-express');        // Declare elements for swagger-documentation
+const swaggerDocument = require('./swagger.json')
+
 app.use(express.json());        // Enabels parsing of incoming json
 app.use(session({               // Set up a session management
     secret: 'supersecret',
@@ -13,6 +16,7 @@ app.use(session({               // Set up a session management
     saveUninitialized: true,
     cookie: {}
 }))
+app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocument));    // Setup the swagger document
 
 // Port, where the application is running
 const port = 3000;

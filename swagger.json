@@ -1,0 +1,225 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "My Tasks-API",
+    "description": "My Tasks-API for the practical exam in den UeK 295",
+    "version": "1.0.0"
+  },
+  "host": "localhost:3000",
+  "basePath": "/",
+  "schemes": [
+    "http"
+  ],
+  "tags": [
+    {
+      "name": "task",
+      "description": "Everything about the tasks"
+    },
+    {
+      "name": "authentification",
+      "description": "Everything about login / logout"
+    }
+  ],
+  "paths": {
+    "/login": {
+      "post": {
+        "tags": ["authentification"],
+        "description": "Is used to login the user. Reqires the params 'password' and 'email' in the body of the request.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "example": "any"
+                },
+                "password": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{'success': <token>}"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/verify": {
+      "get": {
+        "tags": ["authentification"],
+        "description": "Is used to verify if the user is logged in.",
+        "responses": {
+          "200": {
+            "description": "{'state': 'valid'}"
+          },
+          "401": {
+            "description": "{'status': 'no cookie found'} or {'state': 'not valid: the cookie has expired'}"
+          }
+        }
+      }
+    },
+    "/logout": {
+      "delete": {
+        "tags": ["authentification"],
+        "description": "Is used to logout the user. The cookie will expire.",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/tasks": {
+      "get": {
+        "tags": ["task"],
+        "description": "Route to get every task in the list.",
+        "responses": {
+          "200": {
+            "description": "List of JSON-Objects that each represent a task."
+          },
+          "403": {
+            "description": "{'status': 'no cookie found'} or {'state': 'not valid: the cookie has expired'}"
+          }
+        }
+      },
+      "post": {
+        "tags": ["task"],
+        "description": "Route to create a task. Mandatory fields in the request-body are: title and description; optional ones are: done and dueDate.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "example": "any"
+                },
+                "description": {
+                  "example": "any"
+                },
+                "done": {
+                  "example": "any"
+                },
+                "dueDate": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "JSON-Object that represents a task"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "403": {
+            "description": "{'status': 'no cookie found'} or {'state': 'not valid: the cookie has expired'}"
+          }
+        }
+      }
+    },
+    "/tasks/{id}": {
+      "get": {
+        "tags": ["task"],
+        "description": "Get a single task by it's id.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON-Object representing the task"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "403": {
+            "description": "{'status': 'no cookie found'} or {'state': 'not valid: the cookie has expired'}"
+          }
+        }
+      },
+      "put": {
+        "tags": ["task"],
+        "description": "Update a already existing task. Has these optional fields in the request-body: title, description, done and dueDate.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "example": "any"
+                },
+                "description": {
+                  "example": "any"
+                },
+                "done": {
+                  "example": "any"
+                },
+                "dueDate": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The updated task as a JSON-Object"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "403": {
+            "description": "{'status': 'no cookie found'} or {'state': 'not valid: the cookie has expired'}"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["task"],
+        "description": "Deletes the element with the provided id.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The now deleted task as a JSON-Object"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "403": {
+            "description": "{'status': 'no cookie found'} or {'state': 'not valid: the cookie has expired'}"
+          }
+        }
+      }
+    }
+  }
+}
