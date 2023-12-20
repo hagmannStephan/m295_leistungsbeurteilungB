@@ -276,7 +276,7 @@ app.delete('/tasks/:id', (request, response) => {
     }
 })
 
-app.use((req, res, next) => {       // Send user code 404 if page isn't found
+app.use((req, res, next) => {       // Response with code 404 if the user accesses a route that does not exist
     res.status(404).json({"404": "route not found"});
 });
 
